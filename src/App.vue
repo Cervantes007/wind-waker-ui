@@ -49,7 +49,13 @@
     <v-system-bar app>
       <span>Wind Waker UI</span>
       <v-spacer></v-spacer>
-      <v-icon color="orange darken-2">mdi-server</v-icon>
+      <span v-if="cooldown">
+        Starting server..., retrying in {{ cooldown }} seconds.
+      </span>
+      <v-icon color="red darken-2" v-if="networkError"
+        >mdi-power-plug-off</v-icon
+      >
+      <v-icon color="green darken-2" v-if="!networkError">mdi-server</v-icon>
       <v-text-field
         class="base-url"
         single-line
@@ -284,10 +290,6 @@
               @click="historyDrawer = true"
               >mdi-history</v-icon
             >
-
-            <v-icon color="red darken-2" v-if="networkError"
-              >mdi-power-plug-off</v-icon
-            >
           </v-system-bar>
 
           <div>
@@ -410,6 +412,10 @@ export default Vue.extend({
     response: null,
     history: [],
     loading: false,
+    retries: 0,
+    cooldown: 0,
+    cooldownInterval: null,
+    retryTimeout: null,
   }),
   mounted() {
     this.sync();
@@ -419,10 +425,13 @@ export default Vue.extend({
     window.removeEventListener("keyup", this.enterListener);
   },
   methods: {
-    sync() {
+    sync(retring = false) {
       this.requests = [];
       this.loading = true;
       this.networkError = false;
+      if (this.retryTimeout && !retring) {
+        clearTimeout(this.retryTimeout!);
+      }
       request("wwActions", { baseURL: this.baseUrl })
         .then((r) => {
           this.requests = (r.data || []).filter(
@@ -433,8 +442,26 @@ export default Vue.extend({
           }
         })
         .catch((r: any) => {
+          if (r.response) {
+            return;
+          }
           if (r.message === "Network Error") {
             this.networkError = true;
+          }
+          if (this.retries <= 3) {
+            const time = this.retries === 0 ? 5000 : this.retries * 10000;
+            this.cooldown = this.retries === 0 ? 5 : this.retries * 10;
+            this.retries++;
+            (this.retryTimeout as any) = setTimeout(() => this.sync(), time);
+            if (this.cooldownInterval) {
+              clearInterval(this.cooldownInterval!);
+            }
+            (this.cooldownInterval as any) = setInterval(() => {
+              this.cooldown = this.cooldown - 1;
+              if (this.cooldown === 0 && this.cooldownInterval) {
+                clearInterval(this.cooldownInterval!);
+              }
+            }, 1000);
           }
         })
         .finally(() => {

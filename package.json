@@ -1,10 +1,10 @@
 {
   "name": "wind-waker-ui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
+    "build": "rimraf dist && vue-cli-service build",
     "lint": "vue-cli-service lint",
     "launch": "http-server ./dist -o -a localhost -p 8090 --silent"
   },
@@ -33,6 +33,7 @@
     "eslint-plugin-vue": "^6.2.2",
     "node-sass": "^4.12.0",
     "prettier": "^2.2.1",
+    "rimraf": "^3.0.2",
     "sass": "^1.32.0",
     "sass-loader": "^10.0.0",
     "typescript": "~4.1.5",
